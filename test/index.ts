@@ -2,6 +2,8 @@ import * as chai from 'chai'
 import Promise from '../src/promise'
 import * as sinon from 'sinon'
 import * as sinonChai from "sinon-chai";
+import { doesNotMatch, rejects } from 'assert';
+import { resolve } from 'path';
 
 chai.use(sinonChai)
 const assert = chai.assert
@@ -174,4 +176,83 @@ describe('Promise', () => {
             done()
         }, 0)
     })
-})
+    it('2.2.7 then必须返回一个promise', () => {
+        const promise1 = new Promise((resolve) => {
+            resolve()
+        })
+        const promise2 = promise1.then(() => { }, () => { })
+        assert(promise2 instanceof Promise)
+    })
+    it('2.2.7.1 如果then(success,fail)中的success返回一个值x，运行Promise Resolution Procedure [[Resolve]](promise2,x)', (done) => {
+        const promise1 = new Promise((resolve) => {
+            resolve()
+        })
+        promise1.then(() => 'success', () => 'fail').then((result) => {
+            assert.equal(result, 'success')
+            done()
+        }, (reason) => { })
+    })
+    it('2.2.7.1 x是一个Promise实例', (done) => {
+        const promise1 = new Promise((resolve) => {
+            resolve()
+        })
+        const fn = sinon.fake()
+        promise1.then(() => new Promise(resolve => resolve())).then(fn)
+        setTimeout(() => {
+            assert.isTrue(fn.called)
+            done()
+        })
+    })
+    it('2.2.7.1 x是一个Promise实例,且失败了', (done) => {
+        const promise1 = new Promise((resolve, reject) => {
+            resolve()
+        })
+        const fn = sinon.fake()
+        promise1.then(() => new Promise((resolve, reject) => reject())).then(null, fn)
+        setTimeout(() => {
+            assert.isTrue(fn.called)
+            done()
+        })
+    })
+    it('2.2.7.1 第二个函数x是一个Promise实例', (done) => {
+        const promise1 = new Promise((resolve, reject) => {
+            reject()
+        })
+        const fn = sinon.fake()
+        promise1.then(null, () => new Promise((resolve) => {
+            resolve()
+        })).then(fn)
+        setTimeout(() => {
+            assert.isTrue(fn.called)
+            done()
+        })
+    })
+    it('2.2.7.1 x是一个Promise实例失败了', (done) => {
+        const promise1 = new Promise((resolve, reject) => {
+            reject()
+        })
+        const fn = sinon.fake()
+        promise1.then(null, () => new Promise((resolve, reject) => reject())).then(null, fn)
+        setTimeout(() => {
+            assert.isTrue(fn.called)
+            done()
+        })
+    })
+    it('2.2.7.2 如果success或fail抛出一个异常e，promise2 必须被拒绝', (done) => {
+        const promise1 = new Promise((resolve, reject) => {
+            reject()
+        })
+        const fn = sinon.fake()
+        const error = new Error
+        const promise2 = promise1.then(null, () => {
+            throw error
+        })
+        promise2.then(null, fn)
+        setTimeout(() => {
+            assert(fn.called)
+            assert(fn.calledWith(error))
+            done()
+        })
+    })
+}
+)
